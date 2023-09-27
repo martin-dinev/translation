@@ -18,6 +18,8 @@
     <script type="text/javascript" src="{{ static_path }}/libs/markdown/katex.js"></script>
     <script type="text/javascript" src="{{ static_path }}/libs/markdown/auto-render.min.js"></script>
 
+    <script type="text/javascript" src="{{ static_path }}/js/editor.js"></script>
+
     {% if text_font_base64 %}
     <style>
         @font-face {
@@ -67,7 +69,7 @@
         {% endif %}
 
         text = $('#markdown').text();
-        $('#preview').html(marked(text));
+        $('#preview').html(marked(preprocess(text)));
         renderMathInElement(document.getElementById('preview'));
 
         {% if pdf_output %}

@@ -70,8 +70,86 @@ function currentTranslationText(){
     return simplemde.value();
 }
 
+/*
+ * Preprocess the text before rendering to preview and to pdf.
+ * 1. variable definition
+ *   - #{0-6} \\START_VAR <var_name> <var_single_line_content>
+ *   - #{0-6} \\START_VAR <var_name> \n <var_multiline_content> \n #{0-6} \\END_VAR
+ * 2. variable use
+ *   - #{0-6} \\USE_VAR <var_name>
+ * @param {string} text - the text to be preprocessed
+ */
+function preprocess(text) {
+    let variable_map = {};
+    let lines = text.split("\n");
+    let startToken = "\\START_VAR";
+    let endToken = "\\END_VAR";
+    let useToken = "\\USE_VAR";
+
+    // first pass to save variables to the map
+
+    let filtered = [];
+
+    for (let i = 0; i < lines.length; i++) {
+        let line = lines[i];
+        let trimmed = line.trim();
+        let tokens = trimmed.split(" ");
+        let start_token_position = 0;
+        if (tokens.length > 0 && tokens[0].match(/^#{1,6}$/)) {
+            start_token_position++;
+        }
+        if (start_token_position + 1 < tokens.length && tokens[start_token_position] === startToken) {
+            let var_name = tokens[start_token_position + 1];
+            let var_content = "";
+            if (tokens.length - 1 !== start_token_position + 1) {
+                var_content = tokens.slice(start_token_position + 2).join(" ");
+            } else {
+                for (let j = i + 1; j < lines.length; j++) {
+                    let line_tokens = lines[j].trim().split(" ");
+                    let end_token_position = 0;
+                    if (line_tokens.length > 0 && line_tokens[0].match(/^#{1,6}$/)) {
+                        end_token_position++;
+                    }
+                    if (line_tokens.length > end_token_position && line_tokens[end_token_position] === endToken) {
+                        i = j;
+                        break;
+                    } else {
+                        var_content += lines[j] + "\n";
+                    }
+                }
+            }
+            variable_map[var_name] = var_content;
+        } else {
+            filtered.push(line);
+        }
+    }
+
+    // second pass to replace variables
+
+    let result = [];
+    for (let i = 0; i < filtered.length; i++) {
+        let line = filtered[i];
+        let tokens = line.split(" ");
+        let use_token_position = 0;
+        if (tokens.length > 0 && tokens[0].match(/^#{1,6}$/)) {
+            use_token_position++;
+        }
+        if (use_token_position + 1 < tokens.length && tokens[use_token_position] === useToken) {
+            let var_name = tokens[use_token_position + 1];
+            let var_content = variable_map[var_name];
+            if (var_content) {
+                result.push(var_content);
+            }
+        } else {
+            result.push(line);
+        }
+    }
+    return result.join("\n");
+}
+
+
 function renderMarkdown(id, text){
-    $('#' + id).html(marked(text));
+    $('#' + id).html(marked(preprocess(text)));
     renderMathInElement(document.getElementById(id));
 }
 
